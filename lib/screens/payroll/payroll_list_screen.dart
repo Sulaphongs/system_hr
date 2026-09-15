@@ -13,7 +13,8 @@ import '../../core/utils/currency_utils.dart';
 import '../../core/utils/date_utils.dart';
 import '../../providers/payroll_provider.dart';
 import '../../providers/employee_provider.dart';
-import '../../database/daos/employee_dao.dart';
+import '../../providers/military_rank_provider.dart';
+import '../../database/app_database.dart';
 import '../../database/daos/payroll_dao.dart';
 import '../../widgets/common/confirm_dialog.dart';
 import '../../widgets/common/table_helpers.dart';
@@ -71,8 +72,8 @@ class _PayrollListScreenState extends State<PayrollListScreen> {
         fontSize: size,
         fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal);
 
-    pw.Widget slipRow(String label, double amount, {bool bold = false, bool showZero = false}) {
-      final amtStr = (amount > 0 || showZero)
+    pw.Widget slipRow(String label, double amount, {bool bold = false}) {
+      final amtStr = amount > 0
           ? '${_numFmt.format(amount)} ກີບ'
           : '.........................';
       return pw.Padding(
@@ -142,8 +143,8 @@ class _PayrollListScreenState extends State<PayrollListScreen> {
               // slipRow(AppStrings.professionalAllowance, pay.professionalAllowance),
               slipRow(AppStrings.certificateAllowance, pay.certificateAllowance),
               slipRow(AppStrings.nutritionAllowance, pay.nutritionAllowance),
-              slipRow(AppStrings.childrenAllowance, pay.childrenAllowance, showZero: true),
-              slipRow(AppStrings.wifeAllowance, pay.wifeAllowance, showZero: true),
+              slipRow(AppStrings.childrenAllowance, pay.childrenAllowance),
+              slipRow(AppStrings.wifeAllowance, pay.wifeAllowance),
               slipRow(AppStrings.costOfLivingAllowance, pay.costOfLivingAllowance),
               slipRow(AppStrings.extraMealAllowance, pay.extraMealAllowance),
               pw.SizedBox(height: 4),
@@ -195,7 +196,7 @@ class _PayrollListScreenState extends State<PayrollListScreen> {
 
   Future<Uint8List> _buildFullReportBytes(
       List<PayrollWithEmployee> records,
-      List<EmployeeWithDetails> empDetails,
+      List<MilitaryRank> militaryRanks,
       int month,
       int year) async {
     final font = await _loadFont('assets/fonts/Phetsarath OT.ttf');
@@ -206,7 +207,7 @@ class _PayrollListScreenState extends State<PayrollListScreen> {
       emblem = pw.MemoryImage(data.buffer.asUint8List());
     } catch (_) {}
 
-    final empMap = {for (final e in empDetails) e.employee.id: e};
+    final rankMap = {for (final r in militaryRanks) r.id: r.code};
     final monthName = AppStrings.months[month - 1];
 
     pw.TextStyle ts({bool bold = false, double size = 7}) => pw.TextStyle(
@@ -230,35 +231,38 @@ class _PayrollListScreenState extends State<PayrollListScreen> {
 
     pw.Widget hcell(String text, double width,
         {bool bold = true, PdfColor fill = PdfColors.white, double height = 13,
-         bool leftBorder = false, bool topBorder = false}) =>
-        pw.Container(
-          width: width,
-          height: height,
-          decoration: pw.BoxDecoration(
-            color: fill,
-            border: pw.Border(
-              top: topBorder ? const pw.BorderSide(color: PdfColors.black, width: 0.3) : pw.BorderSide.none,
-              left: leftBorder ? const pw.BorderSide(color: PdfColors.black, width: 0.3) : pw.BorderSide.none,
-              right: const pw.BorderSide(color: PdfColors.black, width: 0.3),
-              bottom: const pw.BorderSide(color: PdfColors.black, width: 0.3),
-            ),
+         bool leftBorder = false, bool topBorder = false, bool expand = false}) {
+      final box = pw.Container(
+        width: expand ? null : width,
+        height: height,
+        decoration: pw.BoxDecoration(
+          color: fill,
+          border: pw.Border(
+            top: topBorder ? const pw.BorderSide(color: PdfColors.black, width: 0.3) : pw.BorderSide.none,
+            left: leftBorder ? const pw.BorderSide(color: PdfColors.black, width: 0.3) : pw.BorderSide.none,
+            right: const pw.BorderSide(color: PdfColors.black, width: 0.3),
+            bottom: const pw.BorderSide(color: PdfColors.black, width: 0.3),
           ),
-          padding: const pw.EdgeInsets.symmetric(horizontal: 1, vertical: 2),
-          child: pw.Center(
-            child: pw.Text(text,
-            //ຂະໜາດຂໍ້ຄວາມ header cell 
-                style: ts(bold: bold, size: 5.5),
-                textAlign: pw.TextAlign.center),
-          ),
-        );
+        ),
+        padding: const pw.EdgeInsets.symmetric(horizontal: 1, vertical: 2),
+        child: pw.Center(
+          child: pw.Text(text,
+          //ຂະໜາດຂໍ້ຄວາມ header cell
+              style: ts(bold: bold, size: 5.5),
+              textAlign: pw.TextAlign.center),
+        ),
+      );
+      return expand ? pw.Expanded(child: box) : box;
+    }
 
     pw.Widget dcell(String text, double width,
         {pw.Alignment align = pw.Alignment.centerRight,
         bool bold = false,
         PdfColor fill = PdfColors.white,
-        bool leftBorder = false}) =>
-        pw.Container(
-          width: width,
+        bool leftBorder = false,
+        bool expand = false}) {
+      final box = pw.Container(
+          width: expand ? null : width,
           height: 13,
           decoration: pw.BoxDecoration(
             color: fill,
@@ -274,6 +278,8 @@ class _PayrollListScreenState extends State<PayrollListScreen> {
           //ຂະໜາດຂໍ້ຄວາມ data cell
           child: pw.Text(text, style: ts(bold: bold, size: 5.5)),
         );
+      return expand ? pw.Expanded(child: box) : box;
+    }
 
     final h3labels = [
       'ລ/ດ', 'ຊັ້ນ', 'ຊື່ ແລະ ນາມສະກຸນ', 'ເດືອນປີ\nເຂົ້າທ/ຫ',
@@ -315,25 +321,36 @@ class _PayrollListScreenState extends State<PayrollListScreen> {
       hcell('ຫັກຄ່າເຂົ້າ', cw[19], fill: PdfColors.white, height: 48, topBorder: true),
       hcell('ລວມ\nຫັກ', cw[20], fill: PdfColors.white, height: 48, topBorder: true),
       hcell('ຈຳນວນເງິນ\nທີ່ໄດ້ຮັບຕົວຈິງ\nເດືອນ${month.toString().padLeft(2, '0')}/$year', cw[24],  fill: PdfColors.white, height: 48, topBorder: true),
-          hcell('ລາຍເຊັນຮັບ\nເງິນເດືອນ', cw[25], fill: PdfColors.white, height: 48, topBorder: true),
+          hcell('ລາຍເຊັນຮັບ\nເງິນເດືອນ', cw[25], fill: PdfColors.white, height: 48, topBorder: true, expand: true),
 
     ]);
 
     pw.Widget buildH4() => pw.Row(children: [
-      for (int i = 0; i < 13; i++)
-        hcell('${i + 1}', cw[i], bold: false, fill: PdfColors.white, height: 10, leftBorder: i == 0),
-      hcell('14', cw[13], bold: false, fill: PdfColors.white, height: 10),
+      hcell('1',  cw[0],  bold: false, fill: PdfColors.white, height: 10, leftBorder: true),
+      hcell('2',  cw[1],  bold: false, fill: PdfColors.white, height: 10),
+      hcell('3',  cw[2],  bold: false, fill: PdfColors.white, height: 10),
+      hcell('4',  cw[3],  bold: false, fill: PdfColors.white, height: 10),
+      hcell('5',  cw[4],  bold: false, fill: PdfColors.white, height: 10),
+      hcell('6',  cw[5],  bold: false, fill: PdfColors.white, height: 10),
+      hcell('7',  cw[6],  bold: false, fill: PdfColors.white, height: 10),
+      hcell('8',  cw[7],  bold: false, fill: PdfColors.white, height: 10),
+      hcell('9',  cw[8],  bold: false, fill: PdfColors.white, height: 10),
+      hcell('10', cw[9],  bold: false, fill: PdfColors.white, height: 10),
+      hcell('22', cw[10], bold: false, fill: PdfColors.white, height: 10),
+      hcell('23', cw[11], bold: false, fill: PdfColors.white, height: 10),
+      hcell('11', cw[12], bold: false, fill: PdfColors.white, height: 10),
+      hcell('12', cw[13], bold: false, fill: PdfColors.white, height: 10),
+      hcell('13', cw[14], bold: false, fill: PdfColors.white, height: 10),
+      hcell('14', cw[15], bold: false, fill: PdfColors.white, height: 10),
       hcell('15', cw[14], bold: false, fill: PdfColors.white, height: 10),
-      hcell('16', cw[15], bold: false, fill: PdfColors.white, height: 10),
-      hcell('17', cw[14], bold: false, fill: PdfColors.white, height: 10),
-      hcell('23', cw[23], bold: false, fill: PdfColors.white, height: 10),
-      hcell('18', cw[16], bold: false, fill: PdfColors.white, height: 10),
-      hcell('19', cw[17], bold: false, fill: PdfColors.white, height: 10),
-      hcell('20', cw[18], bold: false, fill: PdfColors.white, height: 10),
-      hcell('21', cw[19], bold: false, fill: PdfColors.white, height: 10),
-      hcell('22', cw[20], bold: false, fill: PdfColors.white, height: 10),
+      hcell('16', cw[23], bold: false, fill: PdfColors.white, height: 10),
+      hcell('17', cw[16], bold: false, fill: PdfColors.white, height: 10),
+      hcell('18', cw[17], bold: false, fill: PdfColors.white, height: 10),
+      hcell('19', cw[18], bold: false, fill: PdfColors.white, height: 10),
+      hcell('20', cw[19], bold: false, fill: PdfColors.white, height: 10),
+      hcell('21', cw[20], bold: false, fill: PdfColors.white, height: 10),
       hcell('24', cw[24], bold: false, fill: PdfColors.white, height: 10),
-      hcell('25', cw[25], bold: false, fill: PdfColors.white, height: 10),
+      hcell('25', cw[25], bold: false, fill: PdfColors.white, height: 10, expand: true),
     ]);
 
     final dataRows = <pw.Widget>[];
@@ -341,7 +358,7 @@ class _PayrollListScreenState extends State<PayrollListScreen> {
       final r = records[i];
       final p = r.payroll;
       final e = r.employee;
-      final d = empMap[e.id];
+      final rankCode = rankMap[e.militaryRankId] ?? '';
       final misc = p.clothingDeduction + p.utilityDeduction +
           p.riceDeduction + p.foodRateDeduction;
       final yearsOfService = DateTime.now().difference(e.hireDate).inDays ~/ 365;
@@ -353,7 +370,7 @@ class _PayrollListScreenState extends State<PayrollListScreen> {
       final displayNet = basicIncome + extraIncome - p.totalDeductions;
       dataRows.add(pw.Row(children: [
         dcell('${i + 1}', cw[0], align: pw.Alignment.center, leftBorder: true),
-        dcell(d?.militaryRankCode ?? '', cw[1], align: pw.Alignment.center),
+        dcell(rankCode, cw[1], align: pw.Alignment.center),
         dcell('${e.firstName} ${e.lastName}', cw[2], align: pw.Alignment.centerLeft),
         dcell(DateFormat('MM/yyyy').format(e.hireDate), cw[3], align: pw.Alignment.center),
         dcell(yearsOfService > 0 ? '$yearsOfService' : '', cw[4], align: pw.Alignment.center),
@@ -365,10 +382,12 @@ class _PayrollListScreenState extends State<PayrollListScreen> {
         dcell(amt(p.certificateAllowance), cw[10]),
         dcell(amt(p.extraMealAllowance + p.childrenAllowance), cw[11]),
         dcell(amt(basicIncome), cw[12], bold: true),
-        dcell('${p.wifeCount}', cw[13], align: pw.Alignment.center),
-        dcell(p.wifeAllowance > 0 ? _numFmt.format(p.wifeAllowance) : '0', cw[14]),
+          dcell('${p.wifeCount}', cw[13], align: pw.Alignment.center),
+          dcell(amt(p.wifeAllowance), cw[14]),
+        // dcell(p.wifeAllowance > 0 ? _numFmt.format(p.wifeAllowance) : '0', cw[14]),
         dcell('${p.childrenCount}', cw[15], align: pw.Alignment.center),
-        dcell(p.childrenAllowance > 0 ? _numFmt.format(p.childrenAllowance) : '0', cw[14]),
+        dcell(amt(p.childrenAllowance), cw[14]),
+        // dcell(p.childrenAllowance > 0 ? _numFmt.format(p.childrenAllowance) : '0', cw[14]),
                      dcell(amt(basicIncome - p.totalDeductions), cw[23], bold: true),
         dcell(amt(p.socialSecurity), cw[16]),
         dcell(amt(p.incomeTax), cw[17]),
@@ -377,7 +396,7 @@ class _PayrollListScreenState extends State<PayrollListScreen> {
         dcell(amt(p.totalDeductions), cw[20], bold: true),
    
         dcell(amt(displayNet), cw[24], bold: true),
-        dcell('', cw[25]),
+        dcell('', cw[25], expand: true),
       ]));
     }
 
@@ -385,57 +404,65 @@ class _PayrollListScreenState extends State<PayrollListScreen> {
     pdf.addPage(pw.MultiPage(
       pageFormat: PdfPageFormat.a4.landscape,
       margin: const pw.EdgeInsets.all(15),
-      header: (ctx) => pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.center,
-        children: [
-          if (emblem != null) ...[
-            pw.Center(child: pw.Image(emblem, width: 48, height: 48)),
-            pw.SizedBox(height: 3),
-          ],
-          pw.Center(
-              child: pw.Text('ສາທາລະນະລັດ ປະຊາທິປະໄຕ ປະຊາຊົນລາວ',
-                  style: ts(bold: true, size: 9))),
-          pw.Center(
-              child: pw.Text(
-                  'ສັນຕິພາບ ເອກະລາດ ປະຊາທິປະໄຕ ເອກະພາບ ວັດທະນາຖາວອນ',
-                  style: ts(size: 8))),
-          pw.SizedBox(height: 3),
-          pw.Row(
-            children: [
-              pw.SizedBox(
-                width: 100,
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+      header: (ctx) => ctx.pageNumber == 1
+          ? pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.center,
+              children: [
+                if (emblem != null) ...[
+                  pw.Center(child: pw.Image(emblem, width: 48, height: 48)),
+                  pw.SizedBox(height: 3),
+                ],
+                pw.Center(
+                    child: pw.Text('ສາທາລະນະລັດ ປະຊາທິປະໄຕ ປະຊາຊົນລາວ',
+                        style: ts(bold: true, size: 9))),
+                pw.Center(
+                    child: pw.Text(
+                        'ສັນຕິພາບ ເອກະລາດ ປະຊາທິປະໄຕ ເອກະພາບ ວັດທະນາຖາວອນ',
+                        style: ts(size: 8))),
+                pw.SizedBox(height: 3),
+                pw.Row(
                   children: [
-                    pw.Text('ກົມໃຫ່ຍການເມືອງກອງທັບ', style: ts(size: 7)),
-                    pw.SizedBox(height: 2),
-                    pw.Text('ກອງວິທະຍຸກະຈາຍສຽງກອງທັບ', style: ts(size: 7)),
+                    pw.SizedBox(
+                      width: 100,
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text('ກົມໃຫ່ຍການເມືອງກອງທັບ', style: ts(size: 7)),
+                          pw.SizedBox(height: 2),
+                          pw.Text('ກອງວິທະຍຸກະຈາຍສຽງກອງທັບ', style: ts(size: 7)),
+                        ],
+                      ),
+                    ),
+                    pw.Expanded(
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.center,
+                        children: [
+                          pw.Text('ບັນຊີເປີກຈ່າຍເງິນເດືອນນາຍ ແລະ ພົນທະຫານ ກອງວິທະຍຸກະຈາຍສຽງກອງທັບ',
+                              style: ts(bold: true, size: 11),
+                              textAlign: pw.TextAlign.center),
+                          pw.Text(
+                              'ປະຈຳເດືອນ ${month.toString().padLeft(2, '0')} ($monthName) ປີ $year',
+                              style: ts(bold: true, size: 9),
+                              textAlign: pw.TextAlign.center),
+                        ],
+                      ),
+                    ),
+                    pw.SizedBox(width: 100),
                   ],
                 ),
-              ),
-              pw.Expanded(
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.center,
-                  children: [
-                    pw.Text('ບັນຊີເປີກຈ່າຍເງິນເດືອນນາຍ ແລະ ພົນທະຫານ ກອງວິທະຍຸກະຈາຍສຽງກອງທັບ',
-                        style: ts(bold: true, size: 11),
-                        textAlign: pw.TextAlign.center),
-                    pw.Text(
-                        'ປະຈຳເດືອນ ${month.toString().padLeft(2, '0')} ($monthName) ປີ $year',
-                        style: ts(bold: true, size: 9),
-                        textAlign: pw.TextAlign.center),
-                  ],
-                ),
-              ),
-              pw.SizedBox(width: 100),
-            ],
-          ),
-          pw.SizedBox(height: 4),
-          buildHeaderTop(),
-          buildH4(),
-          pw.SizedBox(height: 1),
-        ],
-      ),
+                pw.SizedBox(height: 4),
+                buildHeaderTop(),
+                buildH4(),
+                pw.SizedBox(height: 1),
+              ],
+            )
+          : pw.Column(
+              children: [
+                buildHeaderTop(),
+                buildH4(),
+                pw.SizedBox(height: 1),
+              ],
+            ),
       build: (_) => dataRows,
     ));
     return pdf.save();
@@ -479,12 +506,12 @@ class _PayrollListScreenState extends State<PayrollListScreen> {
     final messenger = ScaffoldMessenger.of(context);
     try {
       final payrollProv = context.read<PayrollProvider>();
-      final empProv = context.read<EmployeeProvider>();
+      final rankProv = context.read<MilitaryRankProvider>();
       final m = payrollProv.selectedMonth;
       final y = payrollProv.selectedYear;
       final bytes = await _buildFullReportBytes(
         payrollProv.records,
-        empProv.employees,
+        rankProv.ranks,
         m,
         y,
       );

@@ -73,8 +73,11 @@ class PayrollProvider extends ChangeNotifier {
       final dutyAll        = prev?.dutyAllowance        ?? 0.0;
       final specialistAll  = prev?.specialistAllowance  ?? 0.0;
       final nutritionAll   = prev?.nutritionAllowance   ?? 0.0;
-      final childrenAll    = prev?.childrenAllowance    ?? 0.0;
-      final wifeAll        = prev?.wifeAllowance        ?? 0.0;
+      // ຈຳນວນຄົນ × 200,000 ກີບ
+      final wifeCount      = prev?.wifeCount            ?? 0;
+      final childrenCount  = prev?.childrenCount        ?? 0;
+      final wifeAll        = wifeCount * 200000.0;
+      final childrenAll    = childrenCount * 200000.0;
       final costOfLivingAll  = prev?.costOfLivingAllowance  ?? 0.0;
       final professionalAll  = prev?.professionalAllowance  ?? 0.0;
       final certificateAll   = prev?.certificateAllowance   ?? 0.0;
@@ -105,7 +108,9 @@ class PayrollProvider extends ChangeNotifier {
         specialistAllowance: drift.Value(specialistAll),
         nutritionAllowance: drift.Value(nutritionAll),
         childrenAllowance: drift.Value(childrenAll),
+        childrenCount: drift.Value(childrenCount),
         wifeAllowance: drift.Value(wifeAll),
+        wifeCount: drift.Value(wifeCount),
         costOfLivingAllowance: drift.Value(costOfLivingAll),
         professionalAllowance: drift.Value(professionalAll),
         certificateAllowance: drift.Value(certificateAll),
@@ -160,8 +165,10 @@ class PayrollProvider extends ChangeNotifier {
         specialistAllowance: drift.Value(row.specialistAllowance),
         nutritionAllowance: drift.Value(row.nutritionAllowance),
         costOfLivingAllowance: drift.Value(row.costOfLivingAllowance),
-        wifeAllowance: drift.Value(row.wifeAllowance),
-        childrenAllowance: drift.Value(row.childrenAllowance),
+        wifeAllowance: drift.Value(row.wifeCount * 200000.0),
+        wifeCount: drift.Value(row.wifeCount),
+        childrenAllowance: drift.Value(row.childrenCount * 200000.0),
+        childrenCount: drift.Value(row.childrenCount),
         totalIncome: drift.Value(row.totalIncome),
         socialSecurity: drift.Value(row.socialSecurity),
         incomeTax: drift.Value(row.incomeTax),

@@ -12,8 +12,9 @@ class CsvPayrollRow {
   final double specialistAllowance;
   final double nutritionAllowance;
   final double costOfLivingAllowance;
-  final double wifeAllowance;
-  final double childrenAllowance;
+  // ຈຳນວນຄົນ (col 13 / 15) — amount ຄຳນວນໃນ provider: count × 200,000
+  final int wifeCount;
+  final int childrenCount;
   final double totalIncome;
   final double socialSecurity;
   final double incomeTax;
@@ -33,8 +34,8 @@ class CsvPayrollRow {
     required this.specialistAllowance,
     required this.nutritionAllowance,
     required this.costOfLivingAllowance,
-    required this.wifeAllowance,
-    required this.childrenAllowance,
+    required this.wifeCount,
+    required this.childrenCount,
     required this.totalIncome,
     required this.socialSecurity,
     required this.incomeTax,
@@ -81,10 +82,10 @@ List<CsvPayrollRow> parseCsvPayroll(String content) {
       nutritionAllowance: _num(cols, 10),
       costOfLivingAllowance: _num(cols, 11),
       // col 12 = sub-total (skip)
-      // col 13 = wife count (skip)
-      wifeAllowance: _num(cols, 14),
-      // col 15 = children count (skip)
-      childrenAllowance: _num(cols, 16),
+      wifeCount: _int(cols, 13),      // col 13 = ຈ/ນ ເມຍ
+      // col 14 = wife amount (ignored — recalculated from count)
+      childrenCount: _int(cols, 15),  // col 15 = ຈ/ນ ລູກ
+      // col 16 = children amount (ignored — recalculated from count)
       totalIncome: _num(cols, 17),
       socialSecurity: _num(cols, 18),
       incomeTax: _num(cols, 19),
@@ -244,6 +245,12 @@ double _num(List<String> cols, int i) {
   if (i >= cols.length) return 0.0;
   final s = cols[i].replaceAll(RegExp(r'[\s,]'), '').trim();
   return double.tryParse(s) ?? 0.0;
+}
+
+int _int(List<String> cols, int i) {
+  if (i >= cols.length) return 0;
+  final s = cols[i].replaceAll(RegExp(r'[\s,]'), '').trim();
+  return int.tryParse(s) ?? 0;
 }
 
 /// Minimal CSV line parser that respects double-quoted fields.

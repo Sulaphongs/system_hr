@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:drift/drift.dart' as drift;
@@ -26,8 +27,8 @@ class _PayrollFormScreenState extends State<PayrollFormScreen> {
   final _militaryBonusCtrl    = TextEditingController(text: '0');
   final _specialistCtrl       = TextEditingController(text: '0');
   final _nutritionCtrl        = TextEditingController(text: '0');
-  final _childrenCtrl         = TextEditingController(text: '0');
-  final _wifeCtrl             = TextEditingController(text: '0');
+  final _childrenCtrl         = TextEditingController(text: '0'); // ຈຳນວນຄົນ
+  final _wifeCtrl             = TextEditingController(text: '0'); // ຈຳນວນຄົນ
   final _costOfLivingCtrl     = TextEditingController(text: '0');
   final _professionalCtrl     = TextEditingController(text: '0');
   final _certificateCtrl      = TextEditingController(text: '0');
@@ -45,6 +46,12 @@ class _PayrollFormScreenState extends State<PayrollFormScreen> {
   double _v(TextEditingController c) =>
       double.tryParse(c.text.replaceAll(',', '')) ?? 0.0;
 
+  // ຈຳນວນຄົນ → ເງິນ (1 ຄົນ = 200,000 ກີບ)
+  int get _wifeCount     => int.tryParse(_wifeCtrl.text.trim()) ?? 0;
+  int get _childrenCount => int.tryParse(_childrenCtrl.text.trim()) ?? 0;
+  double get _wifeAmount     => _wifeCount * 200000.0;
+  double get _childrenAmount => _childrenCount * 200000.0;
+
   // ກຸ່ມ 1: ຮັບຫຼັກ
   double get _subtotal1 =>
       _v(_rankSalaryCtrl) + _v(_dutyAllowanceCtrl) +
@@ -52,7 +59,7 @@ class _PayrollFormScreenState extends State<PayrollFormScreen> {
 
   // ກຸ່ມ 2: ເງິນອຸດຫນູດ + ອື່ນໆ
   double get _subtotal2 =>
-      _v(_childrenCtrl) + _v(_wifeCtrl) + _v(_certificateCtrl) +
+      _childrenAmount + _wifeAmount + _v(_certificateCtrl) +
       _v(_extraMealCtrl) + _v(_specialistCtrl) + _v(_nutritionCtrl) +
       _v(_costOfLivingCtrl) + _v(_professionalCtrl);
 
@@ -92,8 +99,8 @@ class _PayrollFormScreenState extends State<PayrollFormScreen> {
     _militaryBonusCtrl.text   = CurrencyUtils.formatCompact(pay.militaryBonus);
     _specialistCtrl.text      = CurrencyUtils.formatCompact(pay.specialistAllowance);
     _nutritionCtrl.text       = CurrencyUtils.formatCompact(pay.nutritionAllowance);
-    _childrenCtrl.text        = CurrencyUtils.formatCompact(pay.childrenAllowance);
-    _wifeCtrl.text            = CurrencyUtils.formatCompact(pay.wifeAllowance);
+    _childrenCtrl.text        = pay.childrenCount.toString();
+    _wifeCtrl.text            = pay.wifeCount.toString();
     _costOfLivingCtrl.text    = CurrencyUtils.formatCompact(pay.costOfLivingAllowance);
     _professionalCtrl.text    = CurrencyUtils.formatCompact(pay.professionalAllowance);
     _certificateCtrl.text     = CurrencyUtils.formatCompact(pay.certificateAllowance);
@@ -119,8 +126,10 @@ class _PayrollFormScreenState extends State<PayrollFormScreen> {
             militaryBonus: drift.Value(_v(_militaryBonusCtrl)),
             specialistAllowance: drift.Value(_v(_specialistCtrl)),
             nutritionAllowance: drift.Value(_v(_nutritionCtrl)),
-            childrenAllowance: drift.Value(_v(_childrenCtrl)),
-            wifeAllowance: drift.Value(_v(_wifeCtrl)),
+            childrenAllowance: drift.Value(_childrenAmount),
+            childrenCount: drift.Value(_childrenCount),
+            wifeAllowance: drift.Value(_wifeAmount),
+            wifeCount: drift.Value(_wifeCount),
             costOfLivingAllowance: drift.Value(_v(_costOfLivingCtrl)),
             // professionalAllowance: drift.Value(_v(_professionalCtrl)),
             certificateAllowance: drift.Value(_v(_certificateCtrl)),
@@ -207,13 +216,15 @@ class _PayrollFormScreenState extends State<PayrollFormScreen> {
                       ('ເງິນສົ່ງເສີມກອງທັບ',   _militaryBonusCtrl),
                     ],
                     group2: [
-                      ('ເງິນອຸດໜູນລູກ',         _childrenCtrl),
-                      ('ເງິນອຸດໜູນເມຍ',         _wifeCtrl),
                       ('ເງິນໃບປະກາດ',           _certificateCtrl),
                       ('ເງິນກິນເພີ່ມ',           _extraMealCtrl),
                       (AppStrings.specialistAllowance,  _specialistCtrl),
                       (AppStrings.nutritionAllowance,   _nutritionCtrl),
                       (AppStrings.costOfLivingAllowance,_costOfLivingCtrl),
+                    ],
+                    countFields: [
+                      ('ເງິນອຸດໜູນລູກ', _childrenCtrl, _childrenAmount),
+                      ('ເງິນອຸດໜູນເມຍ', _wifeCtrl,     _wifeAmount),
                     ],
                     onChanged: _recalc,
                   ),
@@ -326,6 +337,73 @@ class _PayField extends StatelessWidget {
             fillColor: Colors.white,
           ),
           onChanged: (_) => onChanged(),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Count field (ຈຳນວນຄົນ → ເງິນ) ────────────────────────────────────────────
+
+class _CountPayField extends StatelessWidget {
+  final String label;
+  final TextEditingController ctrl;
+  final double amount;
+  final VoidCallback onChanged;
+
+  const _CountPayField({
+    required this.label,
+    required this.ctrl,
+    required this.amount,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final amtText = amount > 0
+        ? '= ${NumberFormat('#,##0', 'en_US').format(amount)} ກີບ'
+        : '= 0 ກີບ';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 11.5, color: Color(0xFF4A5568)),
+        ),
+        const SizedBox(height: 4),
+        TextField(
+          controller: ctrl,
+          keyboardType: TextInputType.number,
+          textAlign: TextAlign.right,
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+          decoration: InputDecoration(
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+            suffixText: 'ຄົນ',
+            suffixStyle: const TextStyle(fontSize: 10, color: Color(0xFF9CA3AF)),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: AppColors.primary, width: 1.5),
+            ),
+            filled: true,
+            fillColor: Colors.white,
+          ),
+          onChanged: (_) => onChanged(),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          amtText,
+          style: const TextStyle(fontSize: 10.5, color: Color(0xFF1565C0), fontWeight: FontWeight.w500),
         ),
       ],
     );
@@ -600,6 +678,8 @@ class _InfoChip extends StatelessWidget {
 class _IncomeCard extends StatelessWidget {
   final List<(String, TextEditingController)> group1;
   final List<(String, TextEditingController)> group2;
+  // (label, countCtrl, computedAmount) — ໃຊ້ _CountPayField
+  final List<(String, TextEditingController, double)> countFields;
   final double subtotal1;
   final double subtotal2;
   final double total;
@@ -608,6 +688,7 @@ class _IncomeCard extends StatelessWidget {
   const _IncomeCard({
     required this.group1,
     required this.group2,
+    required this.countFields,
     required this.subtotal1,
     required this.subtotal2,
     required this.total,
@@ -627,6 +708,26 @@ class _IncomeCard extends StatelessWidget {
           Expanded(
               child: r != null
                   ? _PayField(label: r.$1, ctrl: r.$2, onChanged: onChanged)
+                  : const SizedBox()),
+        ]),
+      ));
+    }
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: rows);
+  }
+
+  Widget _countRows(List<(String, TextEditingController, double)> items) {
+    final rows = <Widget>[];
+    for (var i = 0; i < items.length; i += 2) {
+      final l = items[i];
+      final r = i + 1 < items.length ? items[i + 1] : null;
+      rows.add(Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Row(children: [
+          Expanded(child: _CountPayField(label: l.$1, ctrl: l.$2, amount: l.$3, onChanged: onChanged)),
+          const SizedBox(width: 14),
+          Expanded(
+              child: r != null
+                  ? _CountPayField(label: r.$1, ctrl: r.$2, amount: r.$3, onChanged: onChanged)
                   : const SizedBox()),
         ]),
       ));
@@ -667,6 +768,8 @@ class _IncomeCard extends StatelessWidget {
             _fields(group1),
             _SubtotalRow(label: 'ລວມ', amount: subtotal1, color: accent),
             const SizedBox(height: 4),
+            // Count fields (wife / children — ໃສ່ຈຳນວນຄົນ)
+            if (countFields.isNotEmpty) _countRows(countFields),
             // Group 2
             _fields(group2),
           ]),
@@ -746,45 +849,42 @@ class _DeductionCard extends StatelessWidget {
     const accent = Color(0xFFC62828);
     const bg = Color(0xFFFFF1F0);
 
-    Widget readOnlyRow(String label, double amount) => Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: Row(children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label,
-                      style: const TextStyle(
-                          fontSize: 11.5, color: Color(0xFF4A5568))),
-                  const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 9),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF5F5F5),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    child: Row(children: [
-                      Expanded(
-                        child: Text(
-                          CurrencyUtils.formatCompact(amount),
-                          textAlign: TextAlign.right,
-                          style: const TextStyle(
-                              fontSize: 13, fontWeight: FontWeight.w500),
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      const Text('ກີບ',
-                          style: TextStyle(
-                              fontSize: 10, color: Color(0xFF9CA3AF))),
-                    ]),
-                  ),
-                ],
+    Widget readOnlyField(String label, double amount) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 11.5, color: Color(0xFF4A5568))),
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5F5F5),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
+              child: Row(children: [
+                Expanded(
+                  child: Text(
+                    CurrencyUtils.formatCompact(amount),
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                const Text('ກີບ', style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF))),
+              ]),
             ),
+          ],
+        );
+
+    Widget twoCol(Widget left, Widget right) => Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(child: left),
             const SizedBox(width: 14),
-            const Expanded(child: SizedBox()),
+            Expanded(child: right),
           ]),
         );
 
@@ -803,8 +903,7 @@ class _DeductionCard extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         // Header
         Container(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
           color: bg,
           child: Row(children: [
             Container(
@@ -812,38 +911,26 @@ class _DeductionCard extends StatelessWidget {
               decoration: BoxDecoration(
                   color: accent.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8)),
-              child: const Icon(Icons.arrow_circle_down_rounded,
-                  color: accent, size: 18),
+              child: const Icon(Icons.arrow_circle_down_rounded, color: accent, size: 18),
             ),
             const SizedBox(width: 10),
             const Text('ພາກສ່ວນຫັກ',
-                style: TextStyle(
-                    color: accent,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14)),
+                style: TextStyle(color: accent, fontWeight: FontWeight.bold, fontSize: 14)),
           ]),
         ),
-        // Fields
+        // Fields — 2 columns
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
           child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                readOnlyRow('ຫັກ 8% (ປະກັນສັງຄົມ)', socialSecurity),
-                readOnlyRow('ຫັກ 5% (ອາກອນລາຍໄດ້)', incomeTax5),
-                readOnlyRow('ຫັກ 10% (ອາກອນເພີ່ມ)', incomeTax10),
-                // Manual rice deduction
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Row(children: [
-                    Expanded(
-                        child: _PayField(
-                            label: AppStrings.riceDeduction,
-                            ctrl: riceCtrl,
-                            onChanged: onChanged)),
-                    const SizedBox(width: 14),
-                    const Expanded(child: SizedBox()),
-                  ]),
+                twoCol(
+                  readOnlyField('ຫັກ 8% (ປະກັນສັງຄົມ)', socialSecurity),
+                  readOnlyField('ຫັກ 5% (ອາກອນລາຍໄດ້)', incomeTax5),
+                ),
+                twoCol(
+                  readOnlyField('ຫັກ 10% (ອາກອນເພີ່ມ)', incomeTax10),
+                  _PayField(label: AppStrings.riceDeduction, ctrl: riceCtrl, onChanged: onChanged),
                 ),
               ]),
         ),

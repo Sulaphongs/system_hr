@@ -58,6 +58,10 @@ class Payroll extends Table {
   RealColumn get netPay =>
       real().withDefault(const Constant(0.0))();
 
+  // ຈຳນວນຄົນ (1 ຄົນ = 200,000 ກີບ)
+  IntColumn get wifeCount     => integer().withDefault(const Constant(0))();
+  IntColumn get childrenCount => integer().withDefault(const Constant(0))();
+
   TextColumn get note => text().nullable()();
   DateTimeColumn get generatedAt =>
       dateTime().withDefault(currentDateAndTime)();

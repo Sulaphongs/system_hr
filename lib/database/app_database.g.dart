@@ -2999,6 +2999,30 @@ class $PayrollTable extends Payroll
     requiredDuringInsert: false,
     defaultValue: const Constant(0.0),
   );
+  static const VerificationMeta _wifeCountMeta = const VerificationMeta(
+    'wifeCount',
+  );
+  @override
+  late final GeneratedColumn<int> wifeCount = GeneratedColumn<int>(
+    'wife_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _childrenCountMeta = const VerificationMeta(
+    'childrenCount',
+  );
+  @override
+  late final GeneratedColumn<int> childrenCount = GeneratedColumn<int>(
+    'children_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _noteMeta = const VerificationMeta('note');
   @override
   late final GeneratedColumn<String> note = GeneratedColumn<String>(
@@ -3048,6 +3072,8 @@ class $PayrollTable extends Payroll
     tenPercentDeduction,
     totalDeductions,
     netPay,
+    wifeCount,
+    childrenCount,
     note,
     generatedAt,
   ];
@@ -3279,6 +3305,21 @@ class $PayrollTable extends Payroll
         netPay.isAcceptableOrUnknown(data['net_pay']!, _netPayMeta),
       );
     }
+    if (data.containsKey('wife_count')) {
+      context.handle(
+        _wifeCountMeta,
+        wifeCount.isAcceptableOrUnknown(data['wife_count']!, _wifeCountMeta),
+      );
+    }
+    if (data.containsKey('children_count')) {
+      context.handle(
+        _childrenCountMeta,
+        childrenCount.isAcceptableOrUnknown(
+          data['children_count']!,
+          _childrenCountMeta,
+        ),
+      );
+    }
     if (data.containsKey('note')) {
       context.handle(
         _noteMeta,
@@ -3411,6 +3452,14 @@ class $PayrollTable extends Payroll
         DriftSqlType.double,
         data['${effectivePrefix}net_pay'],
       )!,
+      wifeCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}wife_count'],
+      )!,
+      childrenCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}children_count'],
+      )!,
       note: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}note'],
@@ -3455,6 +3504,8 @@ class PayrollRecord extends DataClass implements Insertable<PayrollRecord> {
   final double tenPercentDeduction;
   final double totalDeductions;
   final double netPay;
+  final int wifeCount;
+  final int childrenCount;
   final String? note;
   final DateTime generatedAt;
   const PayrollRecord({
@@ -3484,6 +3535,8 @@ class PayrollRecord extends DataClass implements Insertable<PayrollRecord> {
     required this.tenPercentDeduction,
     required this.totalDeductions,
     required this.netPay,
+    required this.wifeCount,
+    required this.childrenCount,
     this.note,
     required this.generatedAt,
   });
@@ -3516,6 +3569,8 @@ class PayrollRecord extends DataClass implements Insertable<PayrollRecord> {
     map['ten_percent_deduction'] = Variable<double>(tenPercentDeduction);
     map['total_deductions'] = Variable<double>(totalDeductions);
     map['net_pay'] = Variable<double>(netPay);
+    map['wife_count'] = Variable<int>(wifeCount);
+    map['children_count'] = Variable<int>(childrenCount);
     if (!nullToAbsent || note != null) {
       map['note'] = Variable<String>(note);
     }
@@ -3551,6 +3606,8 @@ class PayrollRecord extends DataClass implements Insertable<PayrollRecord> {
       tenPercentDeduction: Value(tenPercentDeduction),
       totalDeductions: Value(totalDeductions),
       netPay: Value(netPay),
+      wifeCount: Value(wifeCount),
+      childrenCount: Value(childrenCount),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       generatedAt: Value(generatedAt),
     );
@@ -3604,6 +3661,8 @@ class PayrollRecord extends DataClass implements Insertable<PayrollRecord> {
       ),
       totalDeductions: serializer.fromJson<double>(json['totalDeductions']),
       netPay: serializer.fromJson<double>(json['netPay']),
+      wifeCount: serializer.fromJson<int>(json['wifeCount']),
+      childrenCount: serializer.fromJson<int>(json['childrenCount']),
       note: serializer.fromJson<String?>(json['note']),
       generatedAt: serializer.fromJson<DateTime>(json['generatedAt']),
     );
@@ -3638,6 +3697,8 @@ class PayrollRecord extends DataClass implements Insertable<PayrollRecord> {
       'tenPercentDeduction': serializer.toJson<double>(tenPercentDeduction),
       'totalDeductions': serializer.toJson<double>(totalDeductions),
       'netPay': serializer.toJson<double>(netPay),
+      'wifeCount': serializer.toJson<int>(wifeCount),
+      'childrenCount': serializer.toJson<int>(childrenCount),
       'note': serializer.toJson<String?>(note),
       'generatedAt': serializer.toJson<DateTime>(generatedAt),
     };
@@ -3670,6 +3731,8 @@ class PayrollRecord extends DataClass implements Insertable<PayrollRecord> {
     double? tenPercentDeduction,
     double? totalDeductions,
     double? netPay,
+    int? wifeCount,
+    int? childrenCount,
     Value<String?> note = const Value.absent(),
     DateTime? generatedAt,
   }) => PayrollRecord(
@@ -3699,6 +3762,8 @@ class PayrollRecord extends DataClass implements Insertable<PayrollRecord> {
     tenPercentDeduction: tenPercentDeduction ?? this.tenPercentDeduction,
     totalDeductions: totalDeductions ?? this.totalDeductions,
     netPay: netPay ?? this.netPay,
+    wifeCount: wifeCount ?? this.wifeCount,
+    childrenCount: childrenCount ?? this.childrenCount,
     note: note.present ? note.value : this.note,
     generatedAt: generatedAt ?? this.generatedAt,
   );
@@ -3772,6 +3837,10 @@ class PayrollRecord extends DataClass implements Insertable<PayrollRecord> {
           ? data.totalDeductions.value
           : this.totalDeductions,
       netPay: data.netPay.present ? data.netPay.value : this.netPay,
+      wifeCount: data.wifeCount.present ? data.wifeCount.value : this.wifeCount,
+      childrenCount: data.childrenCount.present
+          ? data.childrenCount.value
+          : this.childrenCount,
       note: data.note.present ? data.note.value : this.note,
       generatedAt: data.generatedAt.present
           ? data.generatedAt.value
@@ -3808,6 +3877,8 @@ class PayrollRecord extends DataClass implements Insertable<PayrollRecord> {
           ..write('tenPercentDeduction: $tenPercentDeduction, ')
           ..write('totalDeductions: $totalDeductions, ')
           ..write('netPay: $netPay, ')
+          ..write('wifeCount: $wifeCount, ')
+          ..write('childrenCount: $childrenCount, ')
           ..write('note: $note, ')
           ..write('generatedAt: $generatedAt')
           ..write(')'))
@@ -3842,6 +3913,8 @@ class PayrollRecord extends DataClass implements Insertable<PayrollRecord> {
     tenPercentDeduction,
     totalDeductions,
     netPay,
+    wifeCount,
+    childrenCount,
     note,
     generatedAt,
   ]);
@@ -3875,6 +3948,8 @@ class PayrollRecord extends DataClass implements Insertable<PayrollRecord> {
           other.tenPercentDeduction == this.tenPercentDeduction &&
           other.totalDeductions == this.totalDeductions &&
           other.netPay == this.netPay &&
+          other.wifeCount == this.wifeCount &&
+          other.childrenCount == this.childrenCount &&
           other.note == this.note &&
           other.generatedAt == this.generatedAt);
 }
@@ -3906,6 +3981,8 @@ class PayrollCompanion extends UpdateCompanion<PayrollRecord> {
   final Value<double> tenPercentDeduction;
   final Value<double> totalDeductions;
   final Value<double> netPay;
+  final Value<int> wifeCount;
+  final Value<int> childrenCount;
   final Value<String?> note;
   final Value<DateTime> generatedAt;
   const PayrollCompanion({
@@ -3935,6 +4012,8 @@ class PayrollCompanion extends UpdateCompanion<PayrollRecord> {
     this.tenPercentDeduction = const Value.absent(),
     this.totalDeductions = const Value.absent(),
     this.netPay = const Value.absent(),
+    this.wifeCount = const Value.absent(),
+    this.childrenCount = const Value.absent(),
     this.note = const Value.absent(),
     this.generatedAt = const Value.absent(),
   });
@@ -3965,6 +4044,8 @@ class PayrollCompanion extends UpdateCompanion<PayrollRecord> {
     this.tenPercentDeduction = const Value.absent(),
     this.totalDeductions = const Value.absent(),
     this.netPay = const Value.absent(),
+    this.wifeCount = const Value.absent(),
+    this.childrenCount = const Value.absent(),
     this.note = const Value.absent(),
     this.generatedAt = const Value.absent(),
   }) : employeeId = Value(employeeId),
@@ -3997,6 +4078,8 @@ class PayrollCompanion extends UpdateCompanion<PayrollRecord> {
     Expression<double>? tenPercentDeduction,
     Expression<double>? totalDeductions,
     Expression<double>? netPay,
+    Expression<int>? wifeCount,
+    Expression<int>? childrenCount,
     Expression<String>? note,
     Expression<DateTime>? generatedAt,
   }) {
@@ -4033,6 +4116,8 @@ class PayrollCompanion extends UpdateCompanion<PayrollRecord> {
         'ten_percent_deduction': tenPercentDeduction,
       if (totalDeductions != null) 'total_deductions': totalDeductions,
       if (netPay != null) 'net_pay': netPay,
+      if (wifeCount != null) 'wife_count': wifeCount,
+      if (childrenCount != null) 'children_count': childrenCount,
       if (note != null) 'note': note,
       if (generatedAt != null) 'generated_at': generatedAt,
     });
@@ -4065,6 +4150,8 @@ class PayrollCompanion extends UpdateCompanion<PayrollRecord> {
     Value<double>? tenPercentDeduction,
     Value<double>? totalDeductions,
     Value<double>? netPay,
+    Value<int>? wifeCount,
+    Value<int>? childrenCount,
     Value<String?>? note,
     Value<DateTime>? generatedAt,
   }) {
@@ -4097,6 +4184,8 @@ class PayrollCompanion extends UpdateCompanion<PayrollRecord> {
       tenPercentDeduction: tenPercentDeduction ?? this.tenPercentDeduction,
       totalDeductions: totalDeductions ?? this.totalDeductions,
       netPay: netPay ?? this.netPay,
+      wifeCount: wifeCount ?? this.wifeCount,
+      childrenCount: childrenCount ?? this.childrenCount,
       note: note ?? this.note,
       generatedAt: generatedAt ?? this.generatedAt,
     );
@@ -4191,6 +4280,12 @@ class PayrollCompanion extends UpdateCompanion<PayrollRecord> {
     if (netPay.present) {
       map['net_pay'] = Variable<double>(netPay.value);
     }
+    if (wifeCount.present) {
+      map['wife_count'] = Variable<int>(wifeCount.value);
+    }
+    if (childrenCount.present) {
+      map['children_count'] = Variable<int>(childrenCount.value);
+    }
     if (note.present) {
       map['note'] = Variable<String>(note.value);
     }
@@ -4229,6 +4324,8 @@ class PayrollCompanion extends UpdateCompanion<PayrollRecord> {
           ..write('tenPercentDeduction: $tenPercentDeduction, ')
           ..write('totalDeductions: $totalDeductions, ')
           ..write('netPay: $netPay, ')
+          ..write('wifeCount: $wifeCount, ')
+          ..write('childrenCount: $childrenCount, ')
           ..write('note: $note, ')
           ..write('generatedAt: $generatedAt')
           ..write(')'))
@@ -7018,6 +7115,8 @@ typedef $$PayrollTableCreateCompanionBuilder =
       Value<double> tenPercentDeduction,
       Value<double> totalDeductions,
       Value<double> netPay,
+      Value<int> wifeCount,
+      Value<int> childrenCount,
       Value<String?> note,
       Value<DateTime> generatedAt,
     });
@@ -7049,6 +7148,8 @@ typedef $$PayrollTableUpdateCompanionBuilder =
       Value<double> tenPercentDeduction,
       Value<double> totalDeductions,
       Value<double> netPay,
+      Value<int> wifeCount,
+      Value<int> childrenCount,
       Value<String?> note,
       Value<DateTime> generatedAt,
     });
@@ -7206,6 +7307,16 @@ class $$PayrollTableFilterComposer
 
   ColumnFilters<double> get netPay => $composableBuilder(
     column: $table.netPay,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get wifeCount => $composableBuilder(
+    column: $table.wifeCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get childrenCount => $composableBuilder(
+    column: $table.childrenCount,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7377,6 +7488,16 @@ class $$PayrollTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get wifeCount => $composableBuilder(
+    column: $table.wifeCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get childrenCount => $composableBuilder(
+    column: $table.childrenCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get note => $composableBuilder(
     column: $table.note,
     builder: (column) => ColumnOrderings(column),
@@ -7535,6 +7656,14 @@ class $$PayrollTableAnnotationComposer
   GeneratedColumn<double> get netPay =>
       $composableBuilder(column: $table.netPay, builder: (column) => column);
 
+  GeneratedColumn<int> get wifeCount =>
+      $composableBuilder(column: $table.wifeCount, builder: (column) => column);
+
+  GeneratedColumn<int> get childrenCount => $composableBuilder(
+    column: $table.childrenCount,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get note =>
       $composableBuilder(column: $table.note, builder: (column) => column);
 
@@ -7621,6 +7750,8 @@ class $$PayrollTableTableManager
                 Value<double> tenPercentDeduction = const Value.absent(),
                 Value<double> totalDeductions = const Value.absent(),
                 Value<double> netPay = const Value.absent(),
+                Value<int> wifeCount = const Value.absent(),
+                Value<int> childrenCount = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 Value<DateTime> generatedAt = const Value.absent(),
               }) => PayrollCompanion(
@@ -7650,6 +7781,8 @@ class $$PayrollTableTableManager
                 tenPercentDeduction: tenPercentDeduction,
                 totalDeductions: totalDeductions,
                 netPay: netPay,
+                wifeCount: wifeCount,
+                childrenCount: childrenCount,
                 note: note,
                 generatedAt: generatedAt,
               ),
@@ -7681,6 +7814,8 @@ class $$PayrollTableTableManager
                 Value<double> tenPercentDeduction = const Value.absent(),
                 Value<double> totalDeductions = const Value.absent(),
                 Value<double> netPay = const Value.absent(),
+                Value<int> wifeCount = const Value.absent(),
+                Value<int> childrenCount = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 Value<DateTime> generatedAt = const Value.absent(),
               }) => PayrollCompanion.insert(
@@ -7710,6 +7845,8 @@ class $$PayrollTableTableManager
                 tenPercentDeduction: tenPercentDeduction,
                 totalDeductions: totalDeductions,
                 netPay: netPay,
+                wifeCount: wifeCount,
+                childrenCount: childrenCount,
                 note: note,
                 generatedAt: generatedAt,
               ),

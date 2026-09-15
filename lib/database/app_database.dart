@@ -37,7 +37,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -49,6 +49,10 @@ class AppDatabase extends _$AppDatabase {
             await customStatement('ALTER TABLE payroll ADD COLUMN certificate_allowance REAL NOT NULL DEFAULT 0.0');
             await customStatement('ALTER TABLE payroll ADD COLUMN extra_meal_allowance REAL NOT NULL DEFAULT 0.0');
             await customStatement('ALTER TABLE payroll ADD COLUMN ten_percent_deduction REAL NOT NULL DEFAULT 0.0');
+          }
+          if (from < 6) {
+            await customStatement('ALTER TABLE payroll ADD COLUMN wife_count INTEGER NOT NULL DEFAULT 0');
+            await customStatement('ALTER TABLE payroll ADD COLUMN children_count INTEGER NOT NULL DEFAULT 0');
           }
         },
       );

@@ -71,8 +71,8 @@ class _PayrollListScreenState extends State<PayrollListScreen> {
         fontSize: size,
         fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal);
 
-    pw.Widget slipRow(String label, double amount, {bool bold = false}) {
-      final amtStr = amount > 0
+    pw.Widget slipRow(String label, double amount, {bool bold = false, bool showZero = false}) {
+      final amtStr = (amount > 0 || showZero)
           ? '${_numFmt.format(amount)} ກີບ'
           : '.........................';
       return pw.Padding(
@@ -142,8 +142,8 @@ class _PayrollListScreenState extends State<PayrollListScreen> {
               // slipRow(AppStrings.professionalAllowance, pay.professionalAllowance),
               slipRow(AppStrings.certificateAllowance, pay.certificateAllowance),
               slipRow(AppStrings.nutritionAllowance, pay.nutritionAllowance),
-              slipRow(AppStrings.childrenAllowance, pay.childrenAllowance),
-              slipRow(AppStrings.wifeAllowance, pay.wifeAllowance),
+              slipRow(AppStrings.childrenAllowance, pay.childrenAllowance, showZero: true),
+              slipRow(AppStrings.wifeAllowance, pay.wifeAllowance, showZero: true),
               slipRow(AppStrings.costOfLivingAllowance, pay.costOfLivingAllowance),
               slipRow(AppStrings.extraMealAllowance, pay.extraMealAllowance),
               pw.SizedBox(height: 4),
@@ -365,11 +365,10 @@ class _PayrollListScreenState extends State<PayrollListScreen> {
         dcell(amt(p.certificateAllowance), cw[10]),
         dcell(amt(p.extraMealAllowance + p.childrenAllowance), cw[11]),
         dcell(amt(basicIncome), cw[12], bold: true),
-        dcell(p.wifeAllowance > 0 ? '1' : '', cw[13], align: pw.Alignment.center),
-
+        dcell(p.wifeCount > 0 ? '${p.wifeCount}' : '', cw[13], align: pw.Alignment.center),
         dcell(amt(p.wifeAllowance), cw[14]),
-        dcell(p.specialistAllowance > 0 ? '1' : '', cw[15], align: pw.Alignment.center),
-        dcell('', cw[14]),
+        dcell(p.childrenCount > 0 ? '${p.childrenCount}' : '', cw[15], align: pw.Alignment.center),
+        dcell(amt(p.childrenAllowance), cw[14]),
                      dcell(amt(basicIncome - p.totalDeductions), cw[23], bold: true),
         dcell(amt(p.socialSecurity), cw[16]),
         dcell(amt(p.incomeTax), cw[17]),

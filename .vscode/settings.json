@@ -4,5 +4,6 @@
   "dart.debugSdkLibraries": false,
   "dart.env": {
     "PATH": "D:\\SDK\\flutter\\bin\\mingit\\cmd;D:\\SDK\\flutter\\bin;C:\\Windows\\System32;C:\\Windows\\System32\\Wbem;C:\\Windows\\System32\\WindowsPowerShell\\v1.0;C:\\Windows"
-  }
+  },
+  "cmake.sourceDirectory": "D:/HR/system_hr/windows"
 }

@@ -66,7 +66,9 @@ Table (drift schema) → DAO (queries) → AppDatabase → Provider (ChangeNotif
 
 `app.dart` defines a single `GoRouter` with a `ShellRoute` wrapping all routes. `AppShell` renders `SidebarNav` on the left and the active screen on the right. Routes follow the pattern `/feature`, `/feature/new`, `/feature/:id`, `/feature/:id/edit`.
 
-### Database schema (drift, SQLite, schema v5)
+**Exception:** `PayrollImportScreen` and `EmployeeImportScreen` are not GoRouter routes — they are pushed via `Navigator.push` from their respective list screens and run as modal pages outside the shell.
+
+### Database schema (drift, SQLite, schema v6)
 
 Tables: `Positions`, `MilitaryRanks`, `Employees`, `Attendance`, `Leaves`, `Payroll`, `FinanceTransactions`
 
@@ -92,7 +94,7 @@ Schema migrations are manual `ALTER TABLE` statements in `AppDatabase.migration.
 - `militaryBonus` = `rankSalary × 0.30`
 - `seniorityAllowance` = 4-tier formula in `AppDateUtils.calcSeniorityAllowance`: years 1–5 → 10,000/yr, 6–15 → 20,000/yr, 16–25 → 30,000/yr, 26+ → 40,000/yr
 
-All other allowance/deduction fields are copied from the employee's most recent previous month record (`PayrollDao.getLatestForEmployee`). Records are inserted with `insertIfNew` (`InsertMode.insertOrIgnore`) — already-generated months are not overwritten.
+All other allowance/deduction fields are copied from the employee's most recent previous month record (`PayrollDao.getLatestForEmployee`). This includes counts: `wifeCount` and `childrenCount` are copied from the previous record, and their allowances are recalculated as `count × 200,000 LAK`. Records are inserted with `insertIfNew` (`InsertMode.insertOrIgnore`) — already-generated months are not overwritten.
 
 **`wifeAllowance` is intentionally excluded from `totalIncome`** even though it is stored and copied. The `totalIncome` formula is: `rankSalary + militaryBonus + seniorityAllowance + dutyAllowance + specialistAllowance + extraMealAllowance + childrenAllowance + nutritionAllowance + costOfLivingAllowance + professionalAllowance + certificateAllowance`.
 
@@ -120,6 +122,10 @@ All PDFs use the `PhetsarathOT` font loaded from `assets/fonts/Phetsarath OT.ttf
 ### Attendance and Leave modules
 
 Tables, DAOs, providers, and screens exist for `Attendance` and `Leaves`, but they are **not yet registered** in `main.dart`'s `MultiProvider` and have no routes in `app.dart`. To activate them: add `ChangeNotifierProvider` entries to `main.dart` and add `GoRoute` entries to `app.dart`.
+
+### Finance categories
+
+Income and expense categories are hardcoded as `_incomeCategories` / `_expenseCategories` constants at the top of `lib/screens/finance/finance_screen.dart`. They are not in `AppStrings`, not in the database, and not configurable at runtime — edit that file to add or rename categories.
 
 ### Key conventions
 
